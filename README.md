@@ -1,0 +1,1 @@
+# market-master-trading-prediction
