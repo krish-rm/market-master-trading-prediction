@@ -366,43 +366,70 @@ make demo-forex      # Forex market demo
 ## 📋 Project Structure
 
 ```
-Project_MLOps/
-├── README.md                 # This file
-├── Makefile                  # Build automation & commands
-├── requirements.txt          # Production dependencies
-├── requirements-dev.txt      # Development dependencies
-├── .env.example             # Environment template
-├── docker-compose.yml       # Local development
-├── Dockerfile               # Container definition
-├── mlflow.db               # MLflow SQLite database
-├── mlartifacts/            # MLflow model artifacts
-├── data/                   # Generated data files
-├── models/                 # Trained model files
-├── logs/                   # Execution logs & results
-├── terraform/              # Infrastructure as Code
-│   ├── main.tf            # Main infrastructure
-│   └── variables.tf       # Terraform variables
-├── k8s/                   # Kubernetes manifests
-│   └── deployment.yaml    # K8s deployment
-├── src/                   # Source code
-│   ├── app.py            # Streamlit web application
-│   ├── data/             # Data processing modules
-│   ├── models/           # ML models & training
-│   ├── mlops/            # MLOps infrastructure
-│   ├── config/           # Configuration
-│   └── utils/            # Utilities
-├── tests/                # Test suites
-│   ├── unit/            # Unit tests
-│   └── integration/     # Integration tests
-├── scripts/             # Utility scripts
-│   ├── simple_demo.py   # Quick demo script
+market-master-trading-prediction/
+├── README.md                    # Project documentation
+├── Makefile                     # Build automation & commands
+├── requirements.txt             # Production dependencies
+├── requirements-dev.txt         # Development dependencies
+├── env.example                  # Environment template
+├── docker-compose.yml          # Local development setup
+├── Dockerfile                  # Container definition
+├── .git/                       # Git repository
+├── .github/                    # GitHub configuration
+│   └── workflows/              # CI/CD workflows
+│       └── ci-cd.yml          # GitHub Actions pipeline
+├── src/                        # Source code
+│   ├── __init__.py            # Package initialization
+│   ├── app.py                 # Streamlit web application
+│   ├── main.py                # Main application entry point
+│   ├── config/                # Configuration management
+│   │   ├── __init__.py
+│   │   └── settings.py        # Application settings
+│   ├── data/                  # Data processing modules
+│   │   ├── __init__.py
+│   │   ├── asset_classes.py   # Asset class definitions
+│   │   └── data_generator.py  # Financial data generation
+│   ├── models/                # ML models & training
+│   │   ├── __init__.py
+│   │   ├── action_predictor.py # Financial action predictor
+│   │   └── model_factory.py   # Model factory pattern
+│   ├── mlops/                 # MLOps infrastructure
+│   │   ├── __init__.py
+│   │   ├── model_registry.py  # MLflow model registry
+│   │   ├── monitoring.py      # Model monitoring
+│   │   ├── monitoring_simple.py # Simplified monitoring
+│   │   └── pipeline.py        # MLOps pipeline orchestration
+│   └── utils/                 # Utilities and helpers
+│       ├── __init__.py
+│       ├── data_storage.py    # Data storage utilities
+│       ├── helpers.py         # Helper functions
+│       └── logger.py          # Logging configuration
+├── tests/                     # Test suites
+│   ├── __init__.py
+│   ├── test_runner.py         # Test execution runner
+│   ├── unit/                  # Unit tests
+│   │   ├── __init__.py
+│   │   ├── test_action_predictor.py    # Action predictor tests
+│   │   ├── test_data_generation.py     # Data generation tests
+│   │   └── test_mlops_components.py    # MLOps component tests
+│   └── integration/           # Integration tests
+│       ├── __init__.py
+│       └── test_pipeline_integration.py # Pipeline integration tests
+├── scripts/                   # Utility scripts and demos
+│   ├── crypto_trading_demo.py           # Cryptocurrency trading demo
+│   ├── demo_mlops_pipeline.py           # MLOps pipeline demo
+│   ├── demo_summary.py                  # Demo results summary
 │   ├── production_mlops_demo_simple.py  # Production MLOps demo
-│   └── demo_summary.py  # Demo results summary
-├── docs/                # Documentation
-│   ├── TASKMASTER_REAL_EXECUTION_PLAN.md
-│   ├── IMMEDIATE_EXECUTION_PLAN.md
-│   └── PROJECT_COMPLETION_SUMMARY.md
-└── workflows/           # Prefect workflows
+│   └── simple_demo.py                   # Quick demo script
+├── docs/                      # Documentation
+│   └── deployment.md          # Deployment guide
+├── workflows/                 # Workflow definitions
+│   └── mlops_pipeline.py      # Prefect MLOps pipeline
+├── terraform/                 # Infrastructure as Code
+│   ├── main.tf               # Main infrastructure configuration
+│   └── variables.tf          # Terraform variables
+└── k8s/                      # Kubernetes manifests
+    └── deployment.yaml       # Kubernetes deployment configuration
 ```
 
 ## 🔧 Development
@@ -448,7 +475,6 @@ For detailed deployment instructions, see the **[Deployment Guide](docs/deployme
 
 ## 📚 Documentation
 
-- **[Deployment Guide](docs/deployment.md)** - Complete setup and deployment instructions
 - [API Documentation](docs/api.md)
 - [Model Documentation](docs/models.md)
 - [Monitoring Guide](docs/monitoring.md)
