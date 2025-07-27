@@ -6,7 +6,7 @@
 ```bash
 # Clone and setup
 git clone <repository-url>
-cd Project_MLOps
+cd <repository-dir>
 python -m venv venv
 venv\Scripts\activate  # Windows
 # or
