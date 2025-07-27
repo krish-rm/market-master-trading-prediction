@@ -1,0 +1,420 @@
+# Market Master - Kubernetes Deployment Configuration
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: market-master
+  labels:
+    name: market-master
+    environment: production
+
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: market-master-config
+  namespace: market-master
+data:
+  MLFLOW_TRACKING_URI: "http://mlflow-service:5000"
+  MLFLOW_REGISTRY_URI: "http://mlflow-service:5000"
+  LOG_LEVEL: "INFO"
+  ENVIRONMENT: "production"
+
+---
+# Secret for sensitive data
+apiVersion: v1
+kind: Secret
+metadata:
+  name: market-master-secrets
+  namespace: market-master
+type: Opaque
+data:
+  # Base64 encoded values - replace with actual values
+  DB_PASSWORD: "bWFya2V0X21hc3Rlcl9wYXNzd29yZA=="  # market_master_password
+  REDIS_PASSWORD: "cmVkaXNfcGFzc3dvcmQ="  # redis_password
+
+---
+# Service Account for the application
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: market-master-sa
+  namespace: market-master
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/market-master-eks-node-group-role
+
+---
+# Deployment for Market Master Application
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: market-master-app
+  namespace: market-master
+  labels:
+    app: market-master
+    component: app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: market-master
+      component: app
+  template:
+    metadata:
+      labels:
+        app: market-master
+        component: app
+    spec:
+      serviceAccountName: market-master-sa
+      containers:
+      - name: market-master
+        image: market-master:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8501
+          name: http
+        - containerPort: 5000
+          name: mlflow
+        env:
+        - name: MLFLOW_TRACKING_URI
+          valueFrom:
+            configMapKeyRef:
+              name: market-master-config
+              key: MLFLOW_TRACKING_URI
+        - name: MLFLOW_REGISTRY_URI
+          valueFrom:
+            configMapKeyRef:
+              name: market-master-config
+              key: MLFLOW_REGISTRY_URI
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: market-master-config
+              key: LOG_LEVEL
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: market-master-config
+              key: ENVIRONMENT
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: market-master-secrets
+              key: DB_PASSWORD
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: market-master-secrets
+              key: REDIS_PASSWORD
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8501
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8501
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: models-storage
+          mountPath: /app/models
+        - name: logs-storage
+          mountPath: /app/logs
+        - name: data-storage
+          mountPath: /app/data
+      volumes:
+      - name: models-storage
+        persistentVolumeClaim:
+          claimName: models-pvc
+      - name: logs-storage
+        persistentVolumeClaim:
+          claimName: logs-pvc
+      - name: data-storage
+        persistentVolumeClaim:
+          claimName: data-pvc
+
+---
+# Service for Market Master Application
+apiVersion: v1
+kind: Service
+metadata:
+  name: market-master-service
+  namespace: market-master
+  labels:
+    app: market-master
+    component: app
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8501
+    targetPort: 8501
+    protocol: TCP
+    name: http
+  - port: 5000
+    targetPort: 5000
+    protocol: TCP
+    name: mlflow
+  selector:
+    app: market-master
+    component: app
+
+---
+# MLflow Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-service
+  namespace: market-master
+  labels:
+    app: market-master
+    component: mlflow
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5000
+    targetPort: 5000
+    protocol: TCP
+    name: mlflow
+  selector:
+    app: market-master
+    component: mlflow
+
+---
+# MLflow Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow-deployment
+  namespace: market-master
+  labels:
+    app: market-master
+    component: mlflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: market-master
+      component: mlflow
+  template:
+    metadata:
+      labels:
+        app: market-master
+        component: mlflow
+    spec:
+      containers:
+      - name: mlflow
+        image: python:3.9-slim
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - |
+          pip install mlflow
+          mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow.db
+        ports:
+        - containerPort: 5000
+          name: mlflow
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+        volumeMounts:
+        - name: mlflow-storage
+          mountPath: /mlflow
+      volumes:
+      - name: mlflow-storage
+        persistentVolumeClaim:
+          claimName: mlflow-pvc
+
+---
+# Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: market-master-ingress
+  namespace: market-master
+  annotations:
+    kubernetes.io/ingress.class: "alb"
+    alb.ingress.kubernetes.io/scheme: "internet-facing"
+    alb.ingress.kubernetes.io/target-type: "ip"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERTIFICATE_ID"
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+spec:
+  rules:
+  - host: market-master.example.com  # Replace with your domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: market-master-service
+            port:
+              number: 8501
+      - path: /mlflow
+        pathType: Prefix
+        backend:
+          service:
+            name: mlflow-service
+            port:
+              number: 5000
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: market-master-hpa
+  namespace: market-master
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: market-master-app
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# Persistent Volume Claims
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: models-pvc
+  namespace: market-master
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: gp2
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: logs-pvc
+  namespace: market-master
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: gp2
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-pvc
+  namespace: market-master
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: gp2
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlflow-pvc
+  namespace: market-master
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: gp2
+
+---
+# Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: market-master-network-policy
+  namespace: market-master
+spec:
+  podSelector:
+    matchLabels:
+      app: market-master
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: market-master
+    ports:
+    - protocol: TCP
+      port: 8501
+    - protocol: TCP
+      port: 5000
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: market-master
+    ports:
+    - protocol: TCP
+      port: 5000
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 5432  # PostgreSQL
+    - protocol: TCP
+      port: 6379  # Redis
+    - protocol: TCP
+      port: 443   # HTTPS
+    - protocol: TCP
+      port: 80    # HTTP
+
+---
+# Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: market-master-pdb
+  namespace: market-master
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: market-master
+      component: app 

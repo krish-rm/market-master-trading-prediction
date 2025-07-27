@@ -1,0 +1,31 @@
+# Market Master: Financial Market Prediction System
+# Development Dependencies
+# 
+# Use this file for:
+# - Development environments
+# - Testing and code quality
+# - Contributing to the project
+# 
+# Install AFTER requirements.txt:
+# pip install -r requirements.txt
+# pip install -r requirements-dev.txt
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+pytest-asyncio>=0.21.0
+pytest-html>=3.0.0
+
+# Code Quality
+black>=23.0.0
+flake8>=6.0.0
+isort>=5.12.0
+mypy>=1.0.0
+pre-commit>=3.0.0
+bandit>=1.7.0
+safety>=2.3.0
+
+# Development Tools
+jupyter>=1.0.0
+ipython>=8.0.0 
