@@ -480,17 +480,13 @@ market-master-trading-prediction/
 - Business metrics tracking
 
 
-## 🚀 Deployment
-
-For detailed deployment instructions, see the **[Deployment Guide](docs/deployment.md)**.
-
-
 ## 📚 Documentation
 
-- [API Documentation](docs/api.md)
-- [Model Documentation](docs/models.md)
-- [Monitoring Guide](docs/monitoring.md)
-- [MLOps Pipeline Guide](docs/mlops_pipeline.md)
+- [Model Documentation](docs/models.md) - Comprehensive guide to ML models, training, and deployment
+- [API Documentation](docs/api.md) - Complete API reference with examples and usage patterns
+- [Monitoring Guide](docs/monitoring.md) - Complete monitoring, alerting, and dashboard setup guide
+- [MLOps Pipeline Guide](docs/mlops_pipeline.md) - Complete pipeline orchestration, automation, and workflow management
+- [Deployment Guide](docs/deployment.md) - Infrastructure and deployment instructions
 
 
 ## 🤝 Contributing
