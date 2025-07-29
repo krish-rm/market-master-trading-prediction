@@ -126,89 +126,105 @@ We built **Market Master: Financial Market Prediction System** - an end-to-end M
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.8+
-- Docker & Docker Compose
-- AWS CLI (for cloud deployment)
-- Terraform (for IaC)
+- **Python 3.8+**
+- **Docker & Docker Compose** (for local monitoring)
+- **AWS CLI** (for cloud deployment)
+- **Terraform** (for cloud infrastructure)
 
-### Local Development Setup
+### 🏠 Local Development
 
-1. **Setup Environment**
-   ```bash
-   git clone <repository-url>
-   cd <repository-dir>
-   python -m venv venv
-   venv\Scripts\activate  # Windows
-   pip install -r requirements.txt
-   ```
+#### **Step 1: Setup Environment**
+```bash
+git clone <repository-url>
+cd <repository-dir>
+python -m venv venv
+venv\Scripts\activate  # Windows
+pip install -r requirements.txt
+```
 
-2. **Run Demo**
-   ```bash
-   make demo          # Quick demo
-   make run           # Launch web app
-   ```
+#### **Step 2: Run Demo**
+```bash
+make demo          # Quick demo
+make run           # Launch web app (Streamlit directly)
+```
 
-3. **Production MLOps**
-   ```bash
-   make start-mlflow  # Start MLflow server
-   make demo-production  # Full MLOps demo
-   make demo-summary   # View results
-   ```
+#### **Step 3: Production MLOps**
+```bash
+make start-mlflow  # Start MLflow server
+make demo-production  # Full MLOps demo
+make demo-summary   # View results
+```
 
-**🌐 Access Points:**
+#### **Step 4: Optional - Complete Monitoring Stack**
+```bash
+make start-monitoring  # Start complete stack (App + MLflow + Monitoring)
+make stop-monitoring   # Stop all services
+```
+
+### 📊 What You'll Get (Local)
+
+#### **Core Features:**
+- ✅ **3 Trained Models**: Equity, Crypto, Forex prediction models
+- ✅ **MLflow Tracking**: Complete experiment tracking and model registry
+- ✅ **Interactive Dashboard**: Real-time financial predictions and analysis
+- ✅ **Comprehensive Logs**: Detailed execution results and metrics
+
+#### **Access Points:**
 - **Web App**: http://localhost:8501
 - **MLflow UI**: http://localhost:5000
 - **Demo Results**: `logs/production_mlops_demo_results.json`
 
-**📊 What You'll Get:**
-- **3 Trained Models**: Equity, Crypto, Forex prediction models
-- **MLflow Tracking**: Complete experiment tracking and model registry
-- **Interactive Dashboard**: Real-time financial predictions and analysis
-- **Production Monitoring**: Data quality and drift detection
-- **Comprehensive Logs**: Detailed execution results and metricsn
+#### **Advanced Monitoring (Docker Only):**
+- **Grafana**: http://localhost:3000 (Dashboards)
+- **Prometheus**: http://localhost:9090 (Metrics)
+- **Evidently**: Model drift detection (via Python library)
+- **Prefect**: http://localhost:4200 (Workflows)
+
+#### **Data Generation (Synthetic Data):**
+- **Multi-Asset Data**: 4,755+ samples across 5 asset classes
+- **Technical Indicators**: 30+ indicators (RSI, MACD, Bollinger Bands, etc.)
+- **Training Data**: Realistic financial patterns with market volatility
+- **Validation Data**: Separate test sets for model evaluation
+- **Purpose**: Demonstrates MLOps pipeline with realistic financial data patterns
+
+### ☁️ Cloud Deployment
+
+#### **Important Notes:**
+- **Cloud uses Kubernetes (EKS), not Docker Compose**
+- **Local uses Docker Compose for monitoring**
+- **Cloud uses AWS services for monitoring**
 
 
-### Cloud Deployment
-
-#### Prerequisites
-- **AWS Account**: Active AWS account with appropriate permissions
-- **AWS CLI**: Installed and configured
-- **Terraform**: Version >= 1.0 installed
-- **Docker**: For local monitoring services
-
-#### Step 1: Environment Configuration
-1. **Create Environment File**
-   ```bash
-   cp env.example .env
-   ```
-
-2. **Configure AWS Credentials**
-   Edit `.env` file and update the following variables:
-   ```bash
-   # AWS Configuration (REQUIRED for cloud deployment)
-   AWS_ACCESS_KEY_ID=your_aws_access_key_id
-   AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
-   AWS_REGION=us-east-1
-   AWS_S3_BUCKET=market-master-mlflow-artifacts
-   
-   # Optional: Customize other settings
-   DATABASE_URL=postgresql://market_user:market_password@your-rds-endpoint:5432/market_master
-   REDIS_URL=redis://your-redis-endpoint:6379
-   MLFLOW_TRACKING_URI=http://your-mlflow-endpoint:5000
-   ```
-
-3. **Verify AWS Configuration**
-   ```bash
-   aws sts get-caller-identity
-   ```
-
-#### Step 2: Deploy Infrastructure
+#### **Step 1: Environment Configuration**
 ```bash
-# Deploy AWS infrastructure with Terraform
+cp env.example .env
+```
+
+**Configure AWS Credentials** in `.env`:
+```bash
+# AWS Configuration (REQUIRED for cloud deployment)
+AWS_ACCESS_KEY_ID=your_aws_access_key_id
+AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+AWS_REGION=us-east-1
+AWS_S3_BUCKET=market-master-mlflow-artifacts
+
+# Optional: Customize other settings
+DATABASE_URL=postgresql://market_user:market_password@your-rds-endpoint:5432/market_master
+REDIS_URL=redis://your-redis-endpoint:6379
+MLFLOW_TRACKING_URI=http://your-mlflow-endpoint:5000
+```
+
+**Verify AWS Configuration:**
+```bash
+aws sts get-caller-identity
+```
+
+#### **Step 2: Deploy Infrastructure**
+```bash
 make deploy-infrastructure
 ```
 
-This will create:
+**This creates:**
 - **VPC & Networking**: Public/private subnets across 3 AZs
 - **EKS Cluster**: Kubernetes cluster with ML-optimized nodes
 - **RDS Database**: PostgreSQL for MLflow backend
@@ -217,36 +233,64 @@ This will create:
 - **Application Load Balancer**: For traffic distribution
 - **CloudWatch**: Logging and monitoring
 
-#### Step 3: Deploy Models
+#### **Step 3: Deploy Models**
 ```bash
-# Deploy trained models to production
 make deploy-models
 ```
 
-This will:
+**This will:**
 - Deploy trained models to EKS cluster
 - Set up inference pipelines
 - Configure model registry in MLflow
 - Enable auto-scaling for model serving
 
-#### Step 4: Start Monitoring
+#### **Step 4: Start Monitoring**
 ```bash
-# Start monitoring services (local or cloud)
 make start-monitoring
 ```
 
-**🌐 Access Points After Deployment:**
-- **Application**: http://localhost:8501 (local) or ALB endpoint (cloud)
-- **MLflow UI**: http://localhost:5000 (local) or MLflow endpoint (cloud)
-- **Grafana**: http://localhost:3000 (local) or Grafana endpoint (cloud)
-- **Prometheus**: http://localhost:9090 (local) or Prometheus endpoint (cloud)
+### 📊 What You'll Get (Cloud)
 
-**📊 Cloud Infrastructure Created:**
+#### **Core Features:**
+- ✅ **3 Trained Models**: Equity, Crypto, Forex prediction models (deployed on EKS)
+- ✅ **MLflow Tracking**: Complete experiment tracking and model registry (cloud-hosted)
+- ✅ **Interactive Dashboard**: Real-time financial predictions and analysis (ALB endpoint)
+- ✅ **Comprehensive Logs**: Detailed execution results and metrics (CloudWatch)
+
+#### **Access Points:**
+- **Application**: ALB endpoint (cloud)
+- **MLflow UI**: MLflow endpoint (cloud)
+- **Monitoring**: CloudWatch + EKS monitoring
+
+#### **Cloud Infrastructure:**
 - **EKS Cluster**: Auto-scaling Kubernetes cluster
 - **RDS Database**: Managed PostgreSQL database
 - **S3 Storage**: Scalable object storage for models and artifacts
 - **Load Balancer**: High-availability traffic distribution
-- **Monitoring Stack**: Grafana, Prometheus, CloudWatch integration
+
+#### **Monitoring Stack:**
+- **CloudWatch**: Automatic monitoring and logging
+- **EKS Monitoring**: Kubernetes-native monitoring
+- **MLflow**: Deployed on EKS cluster
+
+#### **Data Generation (Production Scale):**
+- **Production Data**: Synthetic financial data generated at scale
+- **Real-time Processing**: Continuous data generation for model training
+- **Multi-Asset Support**: Crypto, forex, equity, commodity, and index data
+- **Technical Indicators**: 30+ indicators calculated in real-time
+- **Data Storage**: S3 buckets for training data and model artifacts
+- **Purpose**: Demonstrates production MLOps with realistic data patterns
+
+### 📋 Monitoring Differences
+
+| Aspect | Local Development | Cloud Deployment |
+|--------|------------------|------------------|
+| **Containerization** | Docker Compose | Kubernetes (EKS) |
+| **Monitoring** | Grafana + Prometheus | CloudWatch + EKS |
+| **Database** | Local SQLite/PostgreSQL | RDS (PostgreSQL) |
+| **Storage** | Local files | S3 buckets |
+| **Orchestration** | Docker Compose | Kubernetes |
+
 
 #### Environment Configuration Options
 
@@ -414,7 +458,7 @@ curl -X POST http://your-inference-endpoint/predict \
 ### Infrastructure & Cloud
 - **AWS**: Cloud infrastructure (EC2, S3, RDS, EKS)
 - **Terraform**: Infrastructure as Code
-- **Docker**: Containerization
+- **Docker**: Containerization (complete application stack)
 - **Kubernetes**: Container orchestration
 
 ### Orchestration & CI/CD
@@ -444,6 +488,42 @@ curl -X POST http://your-inference-endpoint/predict \
 - **Momentum**: Stochastic, Williams %R, CCI
 - **Trend Analysis**: ADX, SuperTrend, ATR
 - **Volatility**: Bollinger Band Width, ATR Ratio
+
+
+## 📊 Data Generation & Synthetic Data
+
+### **Synthetic Data for Demonstration**
+This project uses **synthetic financial data** for demonstration and educational purposes. The data generation system creates realistic financial market patterns without using real market data.
+
+### **Data Generation Process**
+
+#### **Local Development Data:**
+- **Sample Size**: 4,755+ samples across 5 asset classes
+- **Asset Classes**: Cryptocurrency, Forex, Equity, Commodity, Indices
+- **Time Period**: Simulated historical data with realistic market patterns
+- **Features**: 30+ technical indicators calculated from synthetic price data
+- **Purpose**: Demonstrate MLOps pipeline with realistic financial patterns
+
+#### **Cloud Production Data:**
+- **Scale**: Continuous data generation for production training
+- **Real-time**: Synthetic data streams for live model updates
+- **Storage**: S3 buckets for training data and model artifacts
+- **Processing**: Automated feature engineering and technical indicator calculation
+- **Purpose**: Demonstrate production MLOps with realistic data patterns
+
+### **Synthetic Data Benefits:**
+- ✅ **Educational**: Safe for learning MLOps concepts
+- ✅ **Reproducible**: Consistent data patterns for reliable demos
+- ✅ **Scalable**: Can generate any amount of training data
+- ✅ **Realistic**: Mimics real financial market behavior
+- ✅ **Compliant**: No real market data licensing requirements
+
+### **Data Quality Features:**
+- **Market Volatility**: Realistic price fluctuations and trends
+- **Technical Patterns**: Proper calculation of 30+ technical indicators
+- **Asset Diversity**: Different characteristics for each asset class
+- **Temporal Patterns**: Time-based features and seasonality
+- **Noise Addition**: Realistic market noise and outliers
 
 
 ## 🔧 **Technical Architecture**
@@ -574,12 +654,21 @@ make test-integration # Run integration tests
 make test-e2e        # Run end-to-end tests
 ```
 
+### Docker Commands (Optional - Complete Application Stack)
+```bash
+make build           # Build Docker image
+make run-docker      # Run app in Docker container
+make start-monitoring # Start complete stack (App + MLflow + Monitoring)
+make stop-monitoring  # Stop all services
+```
+
 
 ## 📋 Project Structure
 
 ```
 market-master-trading-prediction/
 ├── README.md                    # Project documentation
+├── LICENSE                      # MIT License
 ├── Makefile                     # Build automation & commands
 ├── requirements.txt             # Production dependencies
 ├── requirements-dev.txt         # Development dependencies
@@ -634,7 +723,11 @@ market-master-trading-prediction/
 │   ├── production_mlops_demo_simple.py  # Production MLOps demo
 │   └── simple_demo.py                   # Quick demo script
 ├── docs/                      # Documentation
-│   └── deployment.md          # Deployment guide
+│   ├── api.md                 # Complete API reference
+│   ├── deployment.md          # Deployment guide
+│   ├── models.md              # ML models documentation
+│   ├── monitoring.md          # Monitoring and alerting guide
+│   └── mlops_pipeline.md      # MLOps pipeline guide
 ├── workflows/                 # Workflow definitions
 │   └── mlops_pipeline.py      # Prefect MLOps pipeline
 ├── terraform/                 # Infrastructure as Code
