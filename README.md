@@ -170,22 +170,236 @@ We built **Market Master: Financial Market Prediction System** - an end-to-end M
 
 ### Cloud Deployment
 
-1. **Setup Infrastructure with Terraform**
+#### Prerequisites
+- **AWS Account**: Active AWS account with appropriate permissions
+- **AWS CLI**: Installed and configured
+- **Terraform**: Version >= 1.0 installed
+- **Docker**: For local monitoring services
+
+#### Step 1: Environment Configuration
+1. **Create Environment File**
+   ```bash
+   cp env.example .env
+   ```
+
+2. **Configure AWS Credentials**
+   Edit `.env` file and update the following variables:
+   ```bash
+   # AWS Configuration (REQUIRED for cloud deployment)
+   AWS_ACCESS_KEY_ID=your_aws_access_key_id
+   AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+   AWS_REGION=us-east-1
+   AWS_S3_BUCKET=market-master-mlflow-artifacts
+   
+   # Optional: Customize other settings
+   DATABASE_URL=postgresql://market_user:market_password@your-rds-endpoint:5432/market_master
+   REDIS_URL=redis://your-redis-endpoint:6379
+   MLFLOW_TRACKING_URI=http://your-mlflow-endpoint:5000
+   ```
+
+3. **Verify AWS Configuration**
+   ```bash
+   aws sts get-caller-identity
+   ```
+
+#### Step 2: Deploy Infrastructure
 ```bash
-cd terraform
-terraform init
-terraform plan
-terraform apply
+# Deploy AWS infrastructure with Terraform
+make deploy-infrastructure
 ```
 
-2. **Deploy Models**
+This will create:
+- **VPC & Networking**: Public/private subnets across 3 AZs
+- **EKS Cluster**: Kubernetes cluster with ML-optimized nodes
+- **RDS Database**: PostgreSQL for MLflow backend
+- **ElastiCache Redis**: For caching and session management
+- **S3 Buckets**: For MLflow artifacts and model storage
+- **Application Load Balancer**: For traffic distribution
+- **CloudWatch**: Logging and monitoring
+
+#### Step 3: Deploy Models
 ```bash
+# Deploy trained models to production
 make deploy-models
 ```
 
-3. **Start Monitoring**
+This will:
+- Deploy trained models to EKS cluster
+- Set up inference pipelines
+- Configure model registry in MLflow
+- Enable auto-scaling for model serving
+
+#### Step 4: Start Monitoring
 ```bash
+# Start monitoring services (local or cloud)
 make start-monitoring
+```
+
+**🌐 Access Points After Deployment:**
+- **Application**: http://localhost:8501 (local) or ALB endpoint (cloud)
+- **MLflow UI**: http://localhost:5000 (local) or MLflow endpoint (cloud)
+- **Grafana**: http://localhost:3000 (local) or Grafana endpoint (cloud)
+- **Prometheus**: http://localhost:9090 (local) or Prometheus endpoint (cloud)
+
+**📊 Cloud Infrastructure Created:**
+- **EKS Cluster**: Auto-scaling Kubernetes cluster
+- **RDS Database**: Managed PostgreSQL database
+- **S3 Storage**: Scalable object storage for models and artifacts
+- **Load Balancer**: High-availability traffic distribution
+- **Monitoring Stack**: Grafana, Prometheus, CloudWatch integration
+
+#### Environment Configuration Options
+
+**🔧 Local Development (.env settings):**
+```bash
+# Local database (SQLite)
+DATABASE_URL=sqlite:///mlflow.db
+REDIS_URL=redis://localhost:6379
+MLFLOW_TRACKING_URI=http://localhost:5000
+
+# Local monitoring
+EVIDENTLY_SERVICE_URL=http://localhost:8080
+GRAFANA_URL=http://localhost:3000
+PROMETHEUS_URL=http://localhost:9090
+
+# AWS (optional for local)
+AWS_ACCESS_KEY_ID=your_aws_access_key_id
+AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+AWS_REGION=us-east-1
+```
+
+**☁️ Cloud Production (.env settings):**
+```bash
+# Cloud database (RDS)
+DATABASE_URL=postgresql://market_user:market_password@your-rds-endpoint:5432/market_master
+REDIS_URL=redis://your-redis-endpoint:6379
+MLFLOW_TRACKING_URI=http://your-mlflow-endpoint:5000
+
+# Cloud monitoring
+EVIDENTLY_SERVICE_URL=http://your-monitoring-endpoint:8080
+GRAFANA_URL=http://your-grafana-endpoint:3000
+PROMETHEUS_URL=http://your-prometheus-endpoint:9090
+
+# AWS (required for cloud)
+AWS_ACCESS_KEY_ID=your_aws_access_key_id
+AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+AWS_REGION=us-east-1
+AWS_S3_BUCKET=market-master-mlflow-artifacts
+```
+
+**🔒 Security Configuration:**
+```bash
+# Generate secure keys for production
+SECRET_KEY=your_generated_secret_key_here
+JWT_SECRET_KEY=your_generated_jwt_secret_key_here
+
+# Email alerts (optional)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your_email@gmail.com
+SMTP_PASSWORD=your_email_password
+
+# Slack notifications (optional)
+SLACK_WEBHOOK_URL=your_slack_webhook_url
+```
+
+#### Troubleshooting Cloud Deployment
+
+**🔍 Pre-Deployment Checks:**
+```bash
+# Verify AWS credentials
+aws sts get-caller-identity
+
+# Check Terraform version
+terraform version
+
+# Verify Docker is running
+docker --version
+
+# Test AWS permissions
+aws s3 ls
+aws eks list-clusters
+```
+
+**⚠️ Common Issues & Solutions:**
+
+1. **Terraform State Error**
+   ```bash
+   # If S3 bucket doesn't exist, create it first
+   aws s3 mb s3://market-master-terraform-state --region us-east-1
+   ```
+
+2. **AWS Permissions Error**
+   - Ensure IAM user has: `AdministratorAccess` or equivalent
+   - Required services: EKS, RDS, S3, VPC, EC2, IAM
+
+3. **Docker Compose Error**
+   ```bash
+   # Stop existing containers
+   docker-compose down
+   
+   # Remove old volumes
+   docker volume prune
+   ```
+
+4. **MLflow Connection Error**
+   ```bash
+   # Check MLflow server status
+   curl http://localhost:5000/health
+   
+   # Restart MLflow
+   make mlflow-stop
+   make start-mlflow
+   ```
+
+**✅ Post-Deployment Verification:**
+
+**🔧 Local Verification:**
+```bash
+# Check infrastructure status
+terraform output
+
+# Verify EKS cluster
+aws eks describe-cluster --name market-master-cluster
+
+# Check local monitoring services
+docker-compose ps
+```
+
+**☁️ Cloud Infrastructure Verification:**
+```bash
+# Get EKS cluster endpoint
+aws eks describe-cluster --name market-master-cluster --query 'cluster.endpoint'
+
+# Check EKS node groups
+aws eks list-nodegroups --cluster-name market-master-cluster
+
+# Verify RDS database
+aws rds describe-db-instances --db-instance-identifier market-master-rds
+
+# Check S3 buckets
+aws s3 ls s3://market-master-mlflow-artifacts
+aws s3 ls s3://market-master-models
+
+# Test ALB health
+aws elbv2 describe-target-health --target-group-arn $(aws elbv2 describe-target-groups --names market-master-tg --query 'TargetGroups[0].TargetGroupArn' --output text)
+
+# Check CloudWatch logs
+aws logs describe-log-groups --log-group-name-prefix /aws/eks/market-master
+```
+
+**🤖 Model Deployment Verification:**
+```bash
+# Check MLflow tracking server (cloud endpoint)
+curl http://your-mlflow-endpoint:5000/health
+
+# List registered models via MLflow API
+curl http://your-mlflow-endpoint:5000/api/2.0/mlflow/registered-models/list
+
+# Test inference endpoint (if deployed)
+curl -X POST http://your-inference-endpoint/predict \
+  -H "Content-Type: application/json" \
+  -d '{"data": [{"feature1": 1.0, "feature2": 2.0}]}'
 ```
 
 
@@ -316,24 +530,6 @@ def trigger_retraining():
 - **Inference Latency**: <1 second per prediction
 
 
-## 🧪 Testing
-
-### Unit Tests
-```bash
-make test-unit
-```
-
-### Integration Tests
-```bash
-make test-integration
-```
-
-### End-to-End Tests
-```bash
-make test-e2e
-```
-
-
 ## 🛠️ Available Commands
 
 ### Core Commands
@@ -341,7 +537,6 @@ make test-e2e
 make install          # Install production dependencies
 make install-dev      # Install development dependencies
 make setup           # Setup project directories
-make test            # Run all tests
 make run             # Launch Streamlit web app
 make demo            # Run quick demo
 ```
@@ -369,6 +564,14 @@ make restore         # Restore from backup
 make demo-equity     # Equity market demo
 make demo-crypto     # Cryptocurrency demo
 make demo-forex      # Forex market demo
+```
+
+### Testing Commands
+```bash
+make test            # Run all tests
+make test-unit       # Run unit tests
+make test-integration # Run integration tests
+make test-e2e        # Run end-to-end tests
 ```
 
 
