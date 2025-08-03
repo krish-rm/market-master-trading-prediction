@@ -729,6 +729,7 @@ make stop-monitoring  # Stop all services
 ```
 market-master-trading-prediction/
 ├── README.md                    # Project documentation
+├── LICENSE                      # MIT License
 ├── Makefile                     # Build automation & commands
 ├── requirements.txt             # Production dependencies
 ├── requirements-dev.txt         # Development dependencies
@@ -781,11 +782,42 @@ market-master-trading-prediction/
 │   ├── demo_mlops_pipeline.py           # MLOps pipeline demo
 │   ├── demo_summary.py                  # Demo results summary
 │   ├── production_mlops_demo_simple.py  # Production MLOps demo
-│   └── simple_demo.py                   # Quick demo script
+│   ├── simple_demo.py                   # Quick demo script
+│   ├── deploy-cloud.sh                  # Cloud deployment script (Linux/Mac)
+│   └── deploy-cloud.ps1                 # Cloud deployment script (Windows)
 ├── docs/                      # Documentation
-│   └── deployment.md          # Deployment guide
+│   ├── api.md                 # Complete API reference
+│   ├── deployment.md          # Deployment guide
+│   ├── models.md              # ML models documentation
+│   ├── monitoring.md          # Monitoring and alerting guide
+│   ├── mlops_pipeline.md      # MLOps pipeline guide
+│   ├── cloud-deployment-guide.md # Cloud deployment guide
+│   ├── cloud_access_points.md # Cloud access points documentation
+│   ├── deployment_summary.md  # Deployment summary
+│   ├── grafana_dashboard.png  # Grafana dashboard screenshot
+│   ├── grafana_dashboards.png # Grafana dashboards screenshot
+│   ├── mlflow_experiments.png # MLflow experiments screenshot
+│   ├── mlflow_models.png      # MLflow models screenshot
+│   └── prometheus_metrics.png # Prometheus metrics screenshot
 ├── workflows/                 # Workflow definitions
 │   └── mlops_pipeline.py      # Prefect MLOps pipeline
+├── runners/                   # Execution runners
+│   ├── run_inference.py       # Inference execution runner
+│   └── run_training.py        # Training execution runner
+├── monitoring/                # Monitoring infrastructure
+│   ├── prometheus/            # Prometheus configuration
+│   │   ├── prometheus.yml     # Prometheus main config
+│   │   └── rules.yml          # Alerting rules
+│   └── grafana/               # Grafana configuration
+│       ├── dashboards/        # Grafana dashboards
+│       │   ├── dashboard.yml  # Dashboard configuration
+│       │   ├── mlops-overview.json # MLOps overview dashboard
+│       │   └── simple-mlops.json # Simple MLOps dashboard
+│       └── datasources/       # Data source configurations
+│           └── prometheus.yml # Prometheus data source
+├── deployments/               # Deployment configurations
+│   ├── prefect_training.py    # Prefect training deployment
+│   └── prefect_inference.py   # Prefect inference deployment
 ├── terraform/                 # Infrastructure as Code
 │   ├── main.tf               # Main infrastructure configuration
 │   └── variables.tf          # Terraform variables
