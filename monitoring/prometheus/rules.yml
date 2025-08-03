@@ -1,0 +1,72 @@
+groups:
+  - name: mlops_alerts
+    rules:
+      # Container Health Alerts
+      - alert: ContainerDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container {{ $labels.instance }} is down"
+          description: "Container {{ $labels.instance }} has been down for more than 1 minute"
+
+      # High CPU Usage Alert
+      - alert: HighCPUUsage
+        expr: process_cpu_seconds_total > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 80% for more than 5 minutes"
+
+      # High Memory Usage Alert
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes > 1e9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 1GB for more than 5 minutes"
+
+      # Grafana Health Alerts
+      - alert: GrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Grafana is down"
+          description: "Grafana has been down for more than 1 minute"
+
+      # Prometheus Health Alerts
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus is down"
+          description: "Prometheus has been down for more than 1 minute"
+
+      # MLflow Health Alerts
+      - alert: MLflowDown
+        expr: up{job="mlflow"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MLflow is down"
+          description: "MLflow has been down for more than 1 minute"
+
+      # High HTTP Error Rate
+      - alert: HighHTTPErrorRate
+        expr: rate(grafana_http_request_duration_seconds_count{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP error rate"
+          description: "HTTP 5xx error rate is above 10% for more than 2 minutes" 

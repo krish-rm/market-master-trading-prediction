@@ -4,7 +4,7 @@ MLOps infrastructure for Market Master.
 
 from .model_registry import ModelRegistry, register_model, load_model
 from .monitoring import ModelMonitor, DataQualityMonitor, PerformanceMonitor
-from .pipeline import MLPipeline, TrainingPipeline, InferencePipeline
+from .pipeline import MLPipeline, TrainingPipeline, InferencePipeline, ComprehensiveMonitor
 
 __all__ = [
     "ModelRegistry",
@@ -16,4 +16,5 @@ __all__ = [
     "MLPipeline",
     "TrainingPipeline",
     "InferencePipeline",
+    "ComprehensiveMonitor",
 ] 

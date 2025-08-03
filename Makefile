@@ -122,6 +122,68 @@ deploy-models:
 	python -c "from src.mlops.pipeline import deploy_training_pipeline, deploy_inference_pipeline; deploy_training_pipeline(); deploy_inference_pipeline()"
 	@echo "✅ Models deployed!"
 
+# Cloud Deployment
+deploy-cloud:
+	@echo "☁️  Deploying complete cloud infrastructure..."
+	@if [ -f scripts/deploy-cloud.sh ]; then \
+		bash scripts/deploy-cloud.sh; \
+	elif [ -f scripts/deploy-cloud.ps1 ]; then \
+		powershell -ExecutionPolicy Bypass -File scripts/deploy-cloud.ps1; \
+	else \
+		echo "🚀 Starting cloud deployment..."; \
+		make deploy-infrastructure; \
+		make deploy-models; \
+		make start-monitoring; \
+	fi
+	@echo "✅ Cloud deployment completed!"
+
+deploy-cloud-infra:
+	@echo "🏗️  Deploying only cloud infrastructure..."
+	@if [ -f scripts/deploy-cloud.sh ]; then \
+		bash scripts/deploy-cloud.sh --infra-only; \
+	elif [ -f scripts/deploy-cloud.ps1 ]; then \
+		powershell -ExecutionPolicy Bypass -File scripts/deploy-cloud.ps1 -InfraOnly; \
+	else \
+		make deploy-infrastructure; \
+	fi
+	@echo "✅ Cloud infrastructure deployed!"
+
+deploy-cloud-app:
+	@echo "🤖 Deploying only application to cloud..."
+	@if [ -f scripts/deploy-cloud.sh ]; then \
+		bash scripts/deploy-cloud.sh --app-only; \
+	elif [ -f scripts/deploy-cloud.ps1 ]; then \
+		powershell -ExecutionPolicy Bypass -File scripts/deploy-cloud.ps1 -AppOnly; \
+	else \
+		make deploy-models; \
+	fi
+	@echo "✅ Application deployed to cloud!"
+
+verify-cloud:
+	@echo "🔍 Verifying cloud deployment..."
+	@if [ -f scripts/deploy-cloud.sh ]; then \
+		bash scripts/deploy-cloud.sh --verify-only; \
+	elif [ -f scripts/deploy-cloud.ps1 ]; then \
+		powershell -ExecutionPolicy Bypass -File scripts/deploy-cloud.ps1 -VerifyOnly; \
+	else \
+		echo "Checking infrastructure..."; \
+		cd terraform && terraform output; \
+		echo "Checking application..."; \
+		make health-check; \
+	fi
+	@echo "✅ Cloud deployment verification completed!"
+
+# Windows-specific deployment
+deploy-cloud-windows:
+	@echo "☁️  Deploying to cloud (Windows)..."
+	@if [ -f scripts/deploy-cloud.ps1 ]; then \
+		powershell -ExecutionPolicy Bypass -File scripts/deploy-cloud.ps1; \
+	else \
+		echo "PowerShell deployment script not found. Using standard deployment..."; \
+		make deploy-cloud; \
+	fi
+	@echo "✅ Cloud deployment completed (Windows)!"
+
 # Monitoring
 start-monitoring:
 	@echo "📊 Starting monitoring services..."

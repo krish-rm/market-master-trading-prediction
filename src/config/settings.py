@@ -164,4 +164,16 @@ class Settings(BaseSettings):
     @property
     def has_slack_config(self) -> bool:
         """Check if Slack configuration is available."""
-        return bool(self.slack_webhook_url) 
+        return bool(self.slack_webhook_url)
+
+
+# Global settings instance
+_settings = None
+
+
+def get_settings() -> Settings:
+    """Get the global settings instance."""
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings 

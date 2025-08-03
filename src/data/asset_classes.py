@@ -6,9 +6,10 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 from enum import Enum
 import numpy as np
-from ..utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+# Use basic logging instead of relative import
+logger = logging.getLogger(__name__)
 
 
 class AssetClass(Enum):
@@ -101,7 +102,7 @@ def get_asset_config(asset_class: AssetClass) -> AssetConfig:
             name="Crypto",
             base_price=45000.0,  # Bitcoin
             volatility=0.04,
-            volume_base=800000,
+            volume_base=300000,
             volume_volatility=0.6,
             trend_strength=0.003,
             session_hours=24,
@@ -110,7 +111,7 @@ def get_asset_config(asset_class: AssetClass) -> AssetConfig:
             characteristics={
                 "market_hours": "24/7",
                 "liquidity": "medium",
-                "correlation": "high",
+                "correlation": "medium",
                 "news_sensitivity": "very_high"
             }
         ),
@@ -118,16 +119,16 @@ def get_asset_config(asset_class: AssetClass) -> AssetConfig:
             name="Indices",
             base_price=4500.0,  # S&P 500
             volatility=0.012,
-            volume_base=1500000,
+            volume_base=800000,
             volume_volatility=0.25,
-            trend_strength=0.0015,
+            trend_strength=0.0008,
             session_hours=6.5,
             tick_interval=1,
-            instruments=["SPY", "QQQ", "IWM", "DIA", "VTI"],
+            instruments=["SPX", "NDX", "DJI", "RUT", "VIX"],
             characteristics={
                 "market_hours": "9:30-16:00",
                 "liquidity": "high",
-                "correlation": "very_high",
+                "correlation": "high",
                 "news_sensitivity": "high"
             }
         )
@@ -137,8 +138,14 @@ def get_asset_config(asset_class: AssetClass) -> AssetConfig:
 
 
 def get_all_asset_configs() -> Dict[AssetClass, AssetConfig]:
-    """Get all asset class configurations."""
-    return {asset_class: get_asset_config(asset_class) for asset_class in AssetClass}
+    """Get all asset configurations."""
+    return {
+        AssetClass.EQUITY: get_asset_config(AssetClass.EQUITY),
+        AssetClass.COMMODITY: get_asset_config(AssetClass.COMMODITY),
+        AssetClass.FOREX: get_asset_config(AssetClass.FOREX),
+        AssetClass.CRYPTO: get_asset_config(AssetClass.CRYPTO),
+        AssetClass.INDICES: get_asset_config(AssetClass.INDICES)
+    }
 
 
 def get_instrument_config(asset_class: AssetClass, instrument: str) -> Dict[str, any]:
@@ -152,48 +159,51 @@ def get_instrument_config(asset_class: AssetClass, instrument: str) -> Dict[str,
     Returns:
         Instrument configuration
     """
-    base_config = get_asset_config(asset_class)
+    asset_config = get_asset_config(asset_class)
+    
+    # Base configuration from asset class
+    config = {
+        "base_price": asset_config.base_price,
+        "volatility": asset_config.volatility,
+        "volume_base": asset_config.volume_base,
+        "volume_volatility": asset_config.volume_volatility,
+        "trend_strength": asset_config.trend_strength,
+        "session_hours": asset_config.session_hours,
+        "tick_interval": asset_config.tick_interval,
+        "asset_class": asset_class.value,
+        "instrument": instrument
+    }
     
     # Instrument-specific adjustments
-    instrument_configs = {
-        # Equity
+    instrument_adjustments = {
         "AAPL": {"base_price": 150.0, "volatility": 0.025},
         "TSLA": {"base_price": 250.0, "volatility": 0.04},
         "MSFT": {"base_price": 300.0, "volatility": 0.02},
-        "GOOGL": {"base_price": 2800.0, "volatility": 0.022},
-        "AMZN": {"base_price": 3300.0, "volatility": 0.028},
-        
-        # Commodity
+        "GOOGL": {"base_price": 2800.0, "volatility": 0.018},
+        "AMZN": {"base_price": 3500.0, "volatility": 0.022},
         "GOLD": {"base_price": 1850.0, "volatility": 0.015},
         "SILVER": {"base_price": 25.0, "volatility": 0.025},
-        "OIL": {"base_price": 75.0, "volatility": 0.03},
+        "OIL": {"base_price": 70.0, "volatility": 0.03},
         "COPPER": {"base_price": 4.5, "volatility": 0.02},
         "PLATINUM": {"base_price": 1000.0, "volatility": 0.018},
-        
-        # Forex
         "EUR/USD": {"base_price": 1.2000, "volatility": 0.008},
-        "GBP/USD": {"base_price": 1.3500, "volatility": 0.012},
+        "GBP/USD": {"base_price": 1.3800, "volatility": 0.012},
         "USD/JPY": {"base_price": 110.0, "volatility": 0.006},
         "USD/CHF": {"base_price": 0.9200, "volatility": 0.007},
         "AUD/USD": {"base_price": 0.7500, "volatility": 0.010},
-        
-        # Crypto
         "BTC/USD": {"base_price": 45000.0, "volatility": 0.04},
         "ETH/USD": {"base_price": 3000.0, "volatility": 0.045},
         "ADA/USD": {"base_price": 1.5, "volatility": 0.06},
-        "DOT/USD": {"base_price": 25.0, "volatility": 0.055},
-        "LINK/USD": {"base_price": 25.0, "volatility": 0.05},
-        
-        # Indices
-        "SPY": {"base_price": 450.0, "volatility": 0.012},
-        "QQQ": {"base_price": 380.0, "volatility": 0.015},
-        "IWM": {"base_price": 220.0, "volatility": 0.018},
-        "DIA": {"base_price": 350.0, "volatility": 0.010},
-        "VTI": {"base_price": 240.0, "volatility": 0.011}
+        "DOT/USD": {"base_price": 25.0, "volatility": 0.05},
+        "LINK/USD": {"base_price": 25.0, "volatility": 0.055},
+        "SPX": {"base_price": 4500.0, "volatility": 0.012},
+        "NDX": {"base_price": 15000.0, "volatility": 0.015},
+        "DJI": {"base_price": 35000.0, "volatility": 0.010},
+        "RUT": {"base_price": 2200.0, "volatility": 0.018},
+        "VIX": {"base_price": 20.0, "volatility": 0.08}
     }
     
-    config = base_config.__dict__.copy()
-    if instrument in instrument_configs:
-        config.update(instrument_configs[instrument])
+    if instrument in instrument_adjustments:
+        config.update(instrument_adjustments[instrument])
     
     return config 

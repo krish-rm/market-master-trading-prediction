@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-lb
+  namespace: market-master
+  labels:
+    app: market-master
+    component: mlflow
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 5000
+    protocol: TCP
+    name: http
+  selector:
+    app: market-master
+    component: mlflow
+  externalTrafficPolicy: Local 

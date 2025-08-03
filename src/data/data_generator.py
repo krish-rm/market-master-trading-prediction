@@ -8,11 +8,11 @@ import pandas as pd
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 import random
+import logging
 from .asset_classes import AssetClass, get_asset_config, get_instrument_config
-from ..utils.logger import get_logger
-from ..utils.helpers import calculate_technical_indicators, validate_market_data
 
-logger = get_logger(__name__)
+# Use basic logging instead of relative imports
+logger = logging.getLogger(__name__)
 
 
 class MarketDataGenerator:
@@ -100,39 +100,37 @@ class MarketDataGenerator:
         Generate training data with labels.
         
         Args:
-            n_samples: Number of training samples
+            n_samples: Number of samples to generate
             seed: Random seed for reproducibility
             
         Returns:
             DataFrame with features and labels
         """
-        logger.info("Generating training data", n_samples=n_samples)
+        logger.info("Generating training data", n_samples=n_samples, instrument=self.instrument)
         
         # Generate market data
-        market_data = self.generate_tick_data(n_samples)
+        market_data = self.generate_tick_data(n_samples, seed=seed)
         
-        # Calculate technical indicators
-        features = calculate_technical_indicators(market_data)
-        
-        # Generate labels based on price movements
+        # Generate labels
         labels = self._generate_labels(market_data)
         
-        # Combine features and labels
-        training_data = features.copy()
-        training_data['action'] = labels
+        # Add labels to data
+        market_data['action'] = labels
         
-        # Add metadata
-        training_data['asset_class'] = self.asset_class.value
-        training_data['instrument'] = self.instrument
+        # Add technical indicators (simplified)
+        market_data['sma_20'] = market_data['close'].rolling(window=20).mean()
+        market_data['sma_50'] = market_data['close'].rolling(window=50).mean()
+        market_data['rsi'] = self._calculate_rsi(market_data['close'])
+        market_data['volatility'] = market_data['close'].rolling(window=20).std()
         
-        # Remove rows with NaN values (from technical indicators)
-        training_data = training_data.dropna()
+        # Drop NaN values
+        market_data = market_data.dropna()
         
         logger.info("Training data generated successfully", 
-                   final_samples=len(training_data),
-                   label_distribution=training_data['action'].value_counts().to_dict())
+                   data_shape=market_data.shape,
+                   label_distribution=market_data['action'].value_counts().to_dict())
         
-        return training_data
+        return market_data
     
     def _generate_price_series(self, n_ticks: int) -> np.ndarray:
         """Generate realistic price series."""
@@ -142,184 +140,127 @@ class MarketDataGenerator:
         
         # Generate random walk with trend
         returns = np.random.normal(trend_strength, volatility, n_ticks)
-        
-        # Add some mean reversion
-        for i in range(1, n_ticks):
-            if abs(returns[i]) > volatility * 2:
-                returns[i] *= 0.5  # Reduce extreme moves
-        
-        # Add some momentum
-        momentum_period = 20
-        for i in range(momentum_period, n_ticks):
-            recent_trend = np.mean(returns[i-momentum_period:i])
-            returns[i] += recent_trend * 0.1
-        
-        # Convert to prices
-        price_multipliers = np.exp(np.cumsum(returns))
-        prices = base_price * price_multipliers
+        prices = base_price * np.exp(np.cumsum(returns))
         
         return prices
     
     def _generate_ohlc_data(self, prices: np.ndarray, n_ticks: int) -> Dict[str, np.ndarray]:
         """Generate OHLC data from price series."""
-        # Use close prices as base
-        close = prices
+        # Simple OHLC generation
+        opens = prices[:-1]
+        closes = prices[1:]
         
-        # Generate realistic OHLC relationships
+        # Generate high and low
         volatility = self.config['volatility']
+        price_range = volatility * prices[1:] * 0.5
         
-        # High and low based on close
-        high_low_range = np.random.uniform(0, volatility * 2, n_ticks)
-        high = close + high_low_range * close
-        low = close - high_low_range * close * 0.8
+        highs = closes + np.random.uniform(0, price_range)
+        lows = closes - np.random.uniform(0, price_range)
         
-        # Open based on previous close with some gap
-        open_prices = np.zeros_like(close)
-        open_prices[0] = close[0]
-        
-        for i in range(1, n_ticks):
-            gap = np.random.normal(0, volatility * 0.5)
-            open_prices[i] = close[i-1] * (1 + gap)
-            
-            # Ensure OHLC relationships are valid
-            high[i] = max(high[i], open_prices[i])
-            low[i] = min(low[i], open_prices[i])
+        # Ensure high >= close and low <= close
+        highs = np.maximum(highs, closes)
+        lows = np.minimum(lows, closes)
         
         return {
-            'open': open_prices,
-            'high': high,
-            'low': low,
-            'close': close
+            'open': np.concatenate([[prices[0]], opens]),
+            'high': np.concatenate([[prices[0]], highs]),
+            'low': np.concatenate([[prices[0]], lows]),
+            'close': prices
         }
     
     def _generate_volume_series(self, n_ticks: int, prices: np.ndarray) -> np.ndarray:
-        """Generate realistic volume data."""
-        volume_base = self.config['volume_base']
+        """Generate realistic volume series."""
+        base_volume = self.config['volume_base']
         volume_volatility = self.config['volume_volatility']
         
-        # Base volume with some randomness
-        volumes = np.random.normal(volume_base, volume_base * volume_volatility, n_ticks)
-        volumes = np.abs(volumes)  # Ensure positive
+        # Generate base volume with some randomness
+        volumes = np.random.lognormal(
+            mean=np.log(base_volume),
+            sigma=volume_volatility,
+            size=n_ticks
+        )
         
-        # Volume tends to be higher during price moves
+        # Add price-volume correlation
         price_changes = np.abs(np.diff(prices, prepend=prices[0]))
-        volume_multiplier = 1 + price_changes / np.mean(price_changes) * 0.5
-        volumes *= volume_multiplier
-        
-        # Add some intraday patterns
-        for i in range(n_ticks):
-            # Higher volume at market open/close
-            if i < n_ticks * 0.1 or i > n_ticks * 0.9:
-                volumes[i] *= 1.5
-            
-            # Lower volume during lunch hours (for equity markets)
-            if self.asset_class == AssetClass.EQUITY:
-                if 0.4 < i / n_ticks < 0.6:
-                    volumes[i] *= 0.7
+        volume_multiplier = 1 + price_changes / prices * 10
+        volumes = volumes * volume_multiplier
         
         return volumes.astype(int)
     
     def _generate_labels(self, data: pd.DataFrame) -> np.ndarray:
-        """Generate trading action labels based on price movements."""
-        prices = data['close'].values
-        volumes = data['volume'].values
+        """
+        Generate trading action labels.
         
-        # Calculate some basic indicators for labeling
-        price_changes = np.diff(prices, prepend=prices[0])
-        volume_changes = np.diff(volumes, prepend=volumes[0])
+        Returns:
+            Array of labels: 0 (hold), 1 (buy), 2 (sell)
+        """
+        # Simple labeling based on price movement
+        close_prices = data['close'].values
+        returns = np.diff(close_prices, prepend=close_prices[0])
         
-        # Simple moving averages
-        sma_short = pd.Series(prices).rolling(5).mean().values
-        sma_long = pd.Series(prices).rolling(20).mean().values
+        # Calculate thresholds
+        volatility = self.config['volatility']
+        buy_threshold = volatility * 0.5
+        sell_threshold = -volatility * 0.5
         
-        labels = []
+        # Generate labels
+        labels = np.zeros(len(returns))
+        labels[returns > buy_threshold] = 1  # Buy
+        labels[returns < sell_threshold] = 2  # Sell
         
-        for i in range(len(prices)):
-            if i < 20:  # Not enough data for indicators
-                labels.append('hold')
-                continue
-            
-            # Decision logic based on multiple factors
-            price_trend = prices[i] > sma_short[i]
-            long_trend = prices[i] > sma_long[i]
-            price_momentum = price_changes[i] > 0
-            volume_support = volume_changes[i] > 0
-            
-            # Combine signals
-            bullish_signals = sum([price_trend, long_trend, price_momentum, volume_support])
-            
-            if bullish_signals >= 3:
-                if price_changes[i] > np.std(price_changes) * 2:
-                    labels.append('strong_buy')
-                else:
-                    labels.append('buy')
-            elif bullish_signals <= 1:
-                if price_changes[i] < -np.std(price_changes) * 2:
-                    labels.append('strong_sell')
-                else:
-                    labels.append('sell')
-            else:
-                labels.append('hold')
-        
-        return np.array(labels)
+        return labels
     
     def _get_session_info(self, timestamps: pd.DatetimeIndex) -> np.ndarray:
         """Get market session information."""
-        sessions = []
+        sessions = np.zeros(len(timestamps))
         
-        for ts in timestamps:
+        for i, ts in enumerate(timestamps):
             hour = ts.hour
-            
-            if self.asset_class == AssetClass.EQUITY or self.asset_class == AssetClass.INDICES:
-                if 9 <= hour < 16:
-                    sessions.append('regular')
-                else:
-                    sessions.append('closed')
-            else:
-                # 24/5 or 24/7 markets
-                if self.asset_class == AssetClass.CRYPTO:
-                    sessions.append('active')  # Always active
-                else:
-                    # 24/5 markets
-                    if ts.weekday() < 5:  # Monday to Friday
-                        sessions.append('active')
-                    else:
-                        sessions.append('closed')
+            if 9 <= hour < 16:  # Regular market hours
+                sessions[i] = 1
+            elif 16 <= hour < 20:  # After hours
+                sessions[i] = 2
+            else:  # Pre-market
+                sessions[i] = 0
         
-        return np.array(sessions)
+        return sessions
     
     def _get_volatility_regime(self, n_ticks: int) -> np.ndarray:
         """Generate volatility regime information."""
-        # Simulate different volatility regimes
-        regimes = []
-        
-        for i in range(n_ticks):
-            # Higher volatility at market open/close
-            if i < n_ticks * 0.1 or i > n_ticks * 0.9:
-                regimes.append('high')
-            elif i < n_ticks * 0.2 or i > n_ticks * 0.8:
-                regimes.append('medium')
-            else:
-                regimes.append('low')
-        
-        return np.array(regimes)
+        # Simple regime switching
+        regimes = np.random.choice([0, 1, 2], size=n_ticks, p=[0.6, 0.3, 0.1])
+        return regimes
+    
+    def _calculate_rsi(self, prices: pd.Series, period: int = 14) -> pd.Series:
+        """Calculate RSI technical indicator."""
+        delta = prices.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        return rsi
     
     def validate_generated_data(self, data: pd.DataFrame) -> Dict[str, any]:
         """Validate generated data quality."""
-        return validate_market_data(data)
+        validation = {
+            'total_rows': len(data),
+            'missing_values': data.isnull().sum().to_dict(),
+            'price_range': (data['close'].min(), data['close'].max()),
+            'volume_range': (data['volume'].min(), data['volume'].max()),
+            'unique_actions': data['action'].nunique() if 'action' in data.columns else 0
+        }
+        return validation
 
-
-# Convenience functions
 
 def generate_market_data(asset_class: AssetClass, instrument: str, n_ticks: int = 10000, 
                         seed: Optional[int] = None) -> pd.DataFrame:
     """
-    Generate market data for a specific asset and instrument.
+    Generate market data for a specific asset class and instrument.
     
     Args:
         asset_class: Asset class
         instrument: Instrument name
-        n_ticks: Number of ticks
+        n_ticks: Number of ticks to generate
         seed: Random seed
         
     Returns:
@@ -332,16 +273,16 @@ def generate_market_data(asset_class: AssetClass, instrument: str, n_ticks: int 
 def generate_training_data(asset_class: AssetClass, instrument: str, n_samples: int = 10000,
                           seed: Optional[int] = None) -> pd.DataFrame:
     """
-    Generate training data for a specific asset and instrument.
+    Generate training data for a specific asset class and instrument.
     
     Args:
         asset_class: Asset class
         instrument: Instrument name
-        n_samples: Number of samples
+        n_samples: Number of samples to generate
         seed: Random seed
         
     Returns:
-        DataFrame with training data
+        DataFrame with features and labels
     """
     generator = MarketDataGenerator(asset_class, instrument, seed=seed)
     return generator.generate_training_data(n_samples)
@@ -350,27 +291,22 @@ def generate_training_data(asset_class: AssetClass, instrument: str, n_samples: 
 def generate_multi_asset_data(asset_classes: List[AssetClass], n_ticks: int = 10000,
                              seed: Optional[int] = None) -> Dict[str, pd.DataFrame]:
     """
-    Generate market data for multiple asset classes.
+    Generate data for multiple asset classes.
     
     Args:
         asset_classes: List of asset classes
-        n_ticks: Number of ticks per asset
+        n_ticks: Number of ticks per asset class
         seed: Random seed
         
     Returns:
-        Dictionary with data for each asset class
+        Dictionary mapping asset class to DataFrame
     """
     data = {}
-    current_seed = seed
     
     for asset_class in asset_classes:
         config = get_asset_config(asset_class)
-        instrument = config.instruments[0]  # Use first instrument
-        
-        generator = MarketDataGenerator(asset_class, instrument, seed=current_seed)
-        data[asset_class.value] = generator.generate_tick_data(n_ticks)
-        
-        if current_seed is not None:
-            current_seed += 1  # Different seed for each asset
+        for instrument in config.instruments[:2]:  # Use first 2 instruments per class
+            key = f"{asset_class.value}_{instrument}"
+            data[key] = generate_market_data(asset_class, instrument, n_ticks, seed)
     
     return data 

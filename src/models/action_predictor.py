@@ -14,10 +14,10 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.preprocessing import StandardScaler
 from typing import Dict, Any, Optional, Tuple, List
 import os
-from ..utils.logger import get_logger
-from ..utils.helpers import calculate_technical_indicators
+import logging
 
-logger = get_logger(__name__)
+# Use basic logging instead of relative imports
+logger = logging.getLogger(__name__)
 
 
 class ActionPredictor:
@@ -86,8 +86,8 @@ class ActionPredictor:
         if missing_cols:
             raise ValueError(f"Missing required columns: {missing_cols}")
         
-        # Calculate technical indicators
-        features = calculate_technical_indicators(data)
+        # Calculate basic technical indicators
+        features = self._calculate_basic_indicators(data)
         
         # Select only the features we need
         available_features = [col for col in self.feature_names if col in features.columns]
@@ -100,13 +100,34 @@ class ActionPredictor:
         feature_df = features[available_features].copy()
         
         # Fill missing values
-        feature_df = feature_df.ffill().fillna(0)
+        feature_df = feature_df.fillna(0)
         
-        logger.info(f"Features prepared successfully", 
-                   features_count=len(available_features),
-                   data_shape=feature_df.shape)
-        
+        logger.info(f"Prepared {len(feature_df.columns)} features for {len(feature_df)} samples")
         return feature_df
+    
+    def _calculate_basic_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Calculate basic technical indicators."""
+        features = data.copy()
+        
+        # Simple Moving Averages
+        features['sma_20'] = data['close'].rolling(window=20).mean()
+        features['sma_50'] = data['close'].rolling(window=50).mean()
+        
+        # RSI
+        delta = data['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        features['rsi'] = 100 - (100 / (1 + rs))
+        
+        # Price changes
+        features['price_change'] = data['close'].pct_change()
+        features['volume_change'] = data['volume'].pct_change()
+        
+        # Volatility
+        features['atr'] = data['close'].rolling(window=14).std()
+        
+        return features
     
     def train(self, X_train: pd.DataFrame, y_train: pd.Series, 
               X_val: pd.DataFrame, y_val: pd.Series) -> Dict[str, float]:

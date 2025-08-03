@@ -1,0 +1,133 @@
+---
+# CloudWatch Agent ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudwatch-agent-config
+  namespace: market-master
+data:
+  cwagentconfig.json: |
+    {
+      "agent": {
+        "metrics_collection_interval": 60,
+        "run_as_user": "root"
+      },
+      "metrics": {
+        "metrics_collected": {
+          "kubernetes": {
+            "cluster_name": "market-master-cluster",
+            "metrics_collection_interval": 60
+          }
+        },
+        "force_flush_interval": 5
+      },
+      "logs": {
+        "metrics_collected": {
+          "kubernetes": {
+            "cluster_name": "market-master-cluster",
+            "container_insights": true
+          }
+        }
+      }
+    }
+
+---
+# CloudWatch Agent DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cloudwatch-agent
+  namespace: market-master
+spec:
+  selector:
+    matchLabels:
+      name: cloudwatch-agent
+  template:
+    metadata:
+      labels:
+        name: cloudwatch-agent
+    spec:
+      containers:
+        - name: cloudwatch-agent
+          image: amazon/cloudwatch-agent:latest
+          imagePullPolicy: Always
+          env:
+            - name: CLUSTER_NAME
+              value: "market-master-cluster"
+            - name: AWS_REGION
+              value: "us-east-1"
+          volumeMounts:
+            - name: cwagentconfig
+              mountPath: /etc/cwagentconfig
+            - name: rootfs
+              mountPath: /rootfs
+              readOnly: true
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+            - name: devdisk
+              mountPath: /dev/disk
+              readOnly: true
+      volumes:
+        - name: cwagentconfig
+          configMap:
+            name: cloudwatch-agent-config
+        - name: rootfs
+          hostPath:
+            path: /
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: devdisk
+          hostPath:
+            path: /dev/disk
+
+---
+# Prometheus Service for EKS monitoring
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-service
+  namespace: market-master
+  labels:
+    app: prometheus
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9090
+    targetPort: 9090
+    protocol: TCP
+    name: http
+  selector:
+    app: prometheus
+
+---
+# Grafana Service for monitoring UI
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+  namespace: market-master
+  labels:
+    app: grafana
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: grafana 

@@ -8,9 +8,9 @@ import numpy as np
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 import json
-from ..utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class SimpleModelMonitor:

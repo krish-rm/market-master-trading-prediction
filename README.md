@@ -187,6 +187,25 @@ make stop-monitoring   # Stop all services
 - **Validation Data**: Separate test sets for model evaluation
 - **Purpose**: Demonstrates MLOps pipeline with realistic financial data patterns
 
+### 📸 Local Deployment Results Showcase
+
+**See our successful local deployment in action!** These screenshots demonstrate the complete MLOps pipeline running locally:
+
+#### **🔬 MLflow Experiment Tracking**
+- **[MLflow Experiments Dashboard](docs/mlflow_experiments.png)** - Complete experiment tracking with model versions, metrics, and artifacts
+- **[MLflow Models Registry](docs/mlflow_models.png)** - Model registry showing trained models with versioning and deployment status
+
+#### **📊 Monitoring & Visualization**
+- **[Grafana Dashboard Overview](docs/grafana_dashboard.png)** - Comprehensive monitoring dashboard with real-time metrics
+- **[Grafana Dashboards Collection](docs/grafana_dashboards.png)** - Multiple specialized dashboards for different monitoring aspects
+- **[Prometheus Metrics](docs/prometheus_metrics.png)** - System metrics and performance monitoring data
+
+**These results demonstrate:**
+- ✅ **Complete MLOps Pipeline**: End-to-end workflow from data to deployment
+- ✅ **Model Registry**: Proper model versioning and lifecycle management
+- ✅ **Real-time Monitoring**: Live dashboards and metrics collection
+- ✅ **Production-Ready Setup**: Scalable monitoring and alerting infrastructure
+
 ### ☁️ Cloud Deployment
 
 #### **Important Notes:**
@@ -233,29 +252,46 @@ make deploy-infrastructure
 - **Application Load Balancer**: For traffic distribution
 - **CloudWatch**: Logging and monitoring
 
-#### **Step 3: Deploy Models**
+#### **Step 3: Deploy Application to Cloud**
 ```bash
-make deploy-models
+make deploy-cloud
 ```
 
 **This will:**
-- Deploy trained models to EKS cluster
-- Set up inference pipelines
-- Configure model registry in MLflow
-- Enable auto-scaling for model serving
+- Build and push Docker images to ECR
+- Deploy Market Master application to EKS cluster
+- Deploy MLflow tracking server to EKS cluster
+- Configure LoadBalancer services for external access
+- Set up monitoring with CloudWatch integration
+- Enable auto-scaling for application and MLflow services
 
-#### **Step 4: Start Monitoring**
+**Cloud Access Points Created:**
+- **Application**: `http://abcf232436da945b1a2f494e8d633334-2036137640.us-east-1.elb.amazonaws.com`
+- **MLflow UI**: `http://a380c404d2f544762925462b6c08e035-15077138.us-east-1.elb.amazonaws.com`
+- **Monitoring**: CloudWatch + EKS monitoring (AWS Console)
+
+#### **Step 4: Verify Deployment**
 ```bash
-make start-monitoring
+# Check application status
+kubectl get pods -n market-master
+
+# Test application access
+curl -I http://abcf232436da945b1a2f494e8d633334-2036137640.us-east-1.elb.amazonaws.com
+
+# Test MLflow access
+curl -I http://a380c404d2f544762925462b6c08e035-15077138.us-east-1.elb.amazonaws.com
+
+# View application logs
+kubectl logs -f deployment/market-master-app -n market-master
 ```
 
 ### 📊 What You'll Get (Cloud)
 
 #### **Core Features:**
-- ✅ **3 Trained Models**: Equity, Crypto, Forex prediction models (deployed on EKS)
-- ✅ **MLflow Tracking**: Complete experiment tracking and model registry (cloud-hosted)
-- ✅ **Interactive Dashboard**: Real-time financial predictions and analysis (ALB endpoint)
-- ✅ **Comprehensive Logs**: Detailed execution results and metrics (CloudWatch)
+- ✅ **Market Master Application**: Deployed on EKS cluster with auto-scaling
+- ✅ **MLflow Tracking Server**: Complete experiment tracking and model registry (cloud-hosted)
+- ✅ **LoadBalancer Services**: External access for both application and MLflow
+- ✅ **Comprehensive Monitoring**: CloudWatch integration with EKS monitoring
 
 #### **Access Points:**
 - **Application**: ALB endpoint (cloud)
@@ -263,15 +299,15 @@ make start-monitoring
 - **Monitoring**: CloudWatch + EKS monitoring
 
 #### **Cloud Infrastructure:**
-- **EKS Cluster**: Auto-scaling Kubernetes cluster
-- **RDS Database**: Managed PostgreSQL database
-- **S3 Storage**: Scalable object storage for models and artifacts
-- **Load Balancer**: High-availability traffic distribution
+- **EKS Cluster**: Auto-scaling Kubernetes cluster with t3.small nodes
+- **ECR Repository**: Docker image registry for application deployment
+- **Load Balancers**: AWS Application Load Balancers for external access
+- **EBS Storage**: Persistent volumes for MLflow and application data
 
 #### **Monitoring Stack:**
 - **CloudWatch**: Automatic monitoring and logging
 - **EKS Monitoring**: Kubernetes-native monitoring
-- **MLflow**: Deployed on EKS cluster
+- **MLflow**: Deployed on EKS cluster with LoadBalancer access
 
 #### **Data Generation (Production Scale):**
 - **Production Data**: Synthetic financial data generated at scale
@@ -290,6 +326,27 @@ make start-monitoring
 | **Database** | Local SQLite/PostgreSQL | RDS (PostgreSQL) |
 | **Storage** | Local files | S3 buckets |
 | **Orchestration** | Docker Compose | Kubernetes |
+
+### 🚀 Deployment Success Summary
+
+Our cloud deployment successfully achieved all required access points:
+
+✅ **Application: ALB endpoint (cloud)** - `http://abcf232436da945b1a2f494e8d633334-2036137640.us-east-1.elb.amazonaws.com`  
+✅ **MLflow UI: MLflow endpoint (cloud)** - `http://a380c404d2f544762925462b6c08e035-15077138.us-east-1.elb.amazonaws.com`  
+✅ **Monitoring: CloudWatch + EKS monitoring** - Available via AWS Console  
+✅ **Cloud Infrastructure: AWS EKS** - Fully operational cluster  
+
+### 🔧 Troubleshooting
+
+If you encounter issues during deployment:
+
+1. **Check AWS credentials**: `aws sts get-caller-identity`
+2. **Verify EKS cluster**: `aws eks describe-cluster --name market-master-cluster`
+3. **Check pod status**: `kubectl get pods -n market-master`
+4. **View application logs**: `kubectl logs -f deployment/market-master-app -n market-master`
+5. **Test LoadBalancer access**: Use the provided URLs above
+
+For detailed deployment information, see [Deployment Summary](docs/deployment_summary.md).
 
 
 #### Environment Configuration Options
@@ -432,18 +489,22 @@ aws elbv2 describe-target-health --target-group-arn $(aws elbv2 describe-target-
 aws logs describe-log-groups --log-group-name-prefix /aws/eks/market-master
 ```
 
-**🤖 Model Deployment Verification:**
+**🤖 Application Deployment Verification:**
 ```bash
+# Check Market Master application (cloud endpoint)
+curl -I http://abcf232436da945b1a2f494e8d633334-2036137640.us-east-1.elb.amazonaws.com
+
 # Check MLflow tracking server (cloud endpoint)
-curl http://your-mlflow-endpoint:5000/health
+curl -I http://a380c404d2f544762925462b6c08e035-15077138.us-east-1.elb.amazonaws.com
 
 # List registered models via MLflow API
-curl http://your-mlflow-endpoint:5000/api/2.0/mlflow/registered-models/list
+curl http://a380c404d2f544762925462b6c08e035-15077138.us-east-1.elb.amazonaws.com/api/2.0/mlflow/registered-models/list
 
-# Test inference endpoint (if deployed)
-curl -X POST http://your-inference-endpoint/predict \
-  -H "Content-Type: application/json" \
-  -d '{"data": [{"feature1": 1.0, "feature2": 2.0}]}'
+# Check Kubernetes services
+kubectl get services -n market-master
+
+# View application logs
+kubectl logs -f deployment/market-master-app -n market-master
 ```
 
 
@@ -668,7 +729,6 @@ make stop-monitoring  # Stop all services
 ```
 market-master-trading-prediction/
 ├── README.md                    # Project documentation
-├── LICENSE                      # MIT License
 ├── Makefile                     # Build automation & commands
 ├── requirements.txt             # Production dependencies
 ├── requirements-dev.txt         # Development dependencies
@@ -723,11 +783,7 @@ market-master-trading-prediction/
 │   ├── production_mlops_demo_simple.py  # Production MLOps demo
 │   └── simple_demo.py                   # Quick demo script
 ├── docs/                      # Documentation
-│   ├── api.md                 # Complete API reference
-│   ├── deployment.md          # Deployment guide
-│   ├── models.md              # ML models documentation
-│   ├── monitoring.md          # Monitoring and alerting guide
-│   └── mlops_pipeline.md      # MLOps pipeline guide
+│   └── deployment.md          # Deployment guide
 ├── workflows/                 # Workflow definitions
 │   └── mlops_pipeline.py      # Prefect MLOps pipeline
 ├── terraform/                 # Infrastructure as Code
