@@ -8,11 +8,11 @@ import pandas as pd
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 import random
-import logging
 from .asset_classes import AssetClass, get_asset_config, get_instrument_config
+from ..utils.logger import get_logger
 
-# Use basic logging instead of relative imports
-logger = logging.getLogger(__name__)
+# Use structured logging
+logger = get_logger(__name__)
 
 
 class MarketDataGenerator:
@@ -40,18 +40,23 @@ class MarketDataGenerator:
                    instrument=instrument,
                    base_price=self.config['base_price'])
     
-    def generate_tick_data(self, n_ticks: int = 10000, start_time: Optional[datetime] = None) -> pd.DataFrame:
+    def generate_tick_data(self, n_ticks: int = 10000, start_time: Optional[datetime] = None, seed: Optional[int] = None) -> pd.DataFrame:
         """
         Generate realistic tick data.
         
         Args:
             n_ticks: Number of ticks to generate
             start_time: Start time for data generation
+            seed: Random seed for reproducibility
             
         Returns:
             DataFrame with OHLCV market data
         """
         logger.info("Generating tick data", n_ticks=n_ticks, instrument=self.instrument)
+        
+        # Set random seed if provided
+        if seed is not None:
+            np.random.seed(seed)
         
         # Set start time
         if start_time is None:

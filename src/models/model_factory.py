@@ -5,9 +5,9 @@ Manages different model types and configurations.
 
 from typing import Dict, Any, Optional, Type
 from .action_predictor import ActionPredictor
-import logging
+from ..utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ModelFactory:

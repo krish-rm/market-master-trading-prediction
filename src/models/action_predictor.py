@@ -14,10 +14,10 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.preprocessing import StandardScaler
 from typing import Dict, Any, Optional, Tuple, List
 import os
-import logging
+from ..utils.logger import get_logger
 
-# Use basic logging instead of relative imports
-logger = logging.getLogger(__name__)
+# Use structured logging
+logger = get_logger(__name__)
 
 
 class ActionPredictor:
